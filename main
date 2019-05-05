@@ -1,0 +1,107 @@
+import re
+import unicodedata
+from difflib import SequenceMatcher
+
+emotions = {
+    "happy":["obrigado","uau","demais","top","bom","boa"],
+    "neutral":["ok","sim","nao","talvez"],
+    "angry":["pqp","vtnc","caralho","para","chega","puta","cuzao","fuder","merda"]
+    }
+
+validation = {
+
+    }
+
+
+
+def remove_accents(input):
+    out = unicodedata.normalize('NFKD', input)
+    return u"".join([l for l in out if not unicodedata.combining(l)])
+
+def findWord(word,list,cut=0.5):
+    ratio=0
+    outword=""
+    for look in list:
+        temp=SequenceMatcher(None, word, look).ratio()
+        if temp > ratio and temp >= cut:
+            ratio=temp
+            outword=look
+    return {"ratio":ratio,"word":outword}
+
+def determineEmotion(happy,neutral,angry):
+    lh=len(happy)
+    ln=len(neutral)
+    la=len(angry)
+    if lh > (ln+la):
+        return ["happy",2]
+    elif la > (lh+ln):
+        return ["angry",4]
+    else:
+        return ["neutral",3]
+def translateText(input,debug=0,cut=0.8):
+
+        # INPUTS
+        # input (text recieved)   
+    
+    # output has:   
+        # emotion: happy,neutral,angry
+        # level of emotion: 0 to 1 - uses uppercase/lowcase, and the amount of words in the text to determine
+        # language: numbers,portuguese,english,spanish
+        # needAnswer: 1 if it needs answer, 0 if not
+        # nonsense: text has no meaning
+        # answerTo: what has answered (data or yes/no/maybe)
+        # wrongSender: (1 if it's not the person)
+
+    # available only in portuguese
+    
+    output={}
+    input_clean =  re.sub('[^a-zA-Z0-9 \n\.]', '', remove_accents(input.lower()))
+
+    if debug >= 1:
+        print("cleaned string: " + input_clean)
+
+    # determine emotion of each word
+
+    happy = []
+    neutral = []
+    angry = []
+    ans={}
+    for word in input_clean.split():
+        ans["happy"]=findWord(word,emotions["happy"],cut=cut)
+        ans["neutral"]=findWord(word,emotions["neutral"],cut=cut)
+        ans["angry"]=findWord(word,emotions["angry"],cut=cut)
+        if max(ans["happy"]["ratio"],ans["neutral"]["ratio"],ans["angry"]["ratio"]) >= 0.5:
+            if max(ans["happy"]["ratio"],ans["neutral"]["ratio"],ans["angry"]["ratio"]) == ans["neutral"]["ratio"]:
+                neutral.append(ans["neutral"]["word"])
+                if debug>=2:
+                    print("neutral: " + ans["neutral"]["word"] + " = " + word + " ratio:" + str(ans["neutral"]["ratio"]))
+            elif max(ans["happy"]["ratio"],ans["neutral"]["ratio"],ans["angry"]["ratio"]) == ans["happy"]["ratio"]:
+                happy.append(ans["happy"]["word"])
+                if debug>=2:
+                    print("happy: " +ans["happy"]["word"] + " = " + word + " ratio:" + str(ans["happy"]["ratio"]))
+            elif max(ans["happy"]["ratio"],ans["neutral"]["ratio"],ans["angry"]["ratio"]) == ans["angry"]["ratio"]:
+                angry.append(ans["angry"]["word"])
+                if debug>=2:
+                    print("angry: " + ans["angry"]["word"] + " = " + word + " ratio:" + str(ans["angry"]["ratio"]))
+
+    if debug >= 1:
+        print("happy words: " + ",".join(happy))
+        print("neutral words: " + ",".join(neutral))
+        print("angry words: " + ",".join(angry))
+        print("located words: " + str(len(happy)+len(neutral)+len(angry)))
+
+        
+    # determine the equivalent emotion:
+        # which has more words
+        # it should work like a balance, the size that weights more is the right one...
+
+        #v1.0
+            # only the max number
+        
+    [output["emotion"],output["emotionlevel"]]=determineEmotion(happy,neutral,angry)
+    if debug >=1:
+        print("emotion: " + output["emotion"] + " level: " + str(output["emotionlevel"]))
+
+translateText("Ok eu quero, uau toup pqp",debug=1,cut=0.8)
+
+    
